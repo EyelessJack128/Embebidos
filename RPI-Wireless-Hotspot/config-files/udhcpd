@@ -1,0 +1,7 @@
+# This file was installed with the RPI-Wireless-Hotspot script
+# For more info see https://github.com/unixabg/RPI-Wireless-Hotspot
+# ------------------------------------------------------------------------
+# Comment the following line to enable
+#DHCPD_ENABLED="no"
+
+DHCPD_OPTS="-S"
