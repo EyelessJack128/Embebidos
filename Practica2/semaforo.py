@@ -1,0 +1,19 @@
+from gpiozero import LED
+from time import sleep
+
+red = LED(17)
+yellow = LED(27)
+green = LED(22)
+
+while True:
+	green.on()
+	sleep(5)
+	green.off()
+	green.blink(on_time=1,off_time=1,n=3,background=False)
+	#green.off()
+	yellow.on()
+	sleep(2)
+	yellow.off()
+	red.on()
+	sleep(5)
+	red.off()
