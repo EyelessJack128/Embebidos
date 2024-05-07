@@ -1,4 +1,4 @@
-from gpiozero import RGBLED
+from gpiozero import RGBLED, Motor
 from pn532_repo.pn532.api import PN532
 from colorzero import Color
 from signal import pause
@@ -7,6 +7,7 @@ from time import sleep
 
 led = RGBLED(17, 27, 22)
 validIDs =[[1, 0, 4, 8, 4, 227, 217, 5, 148, 121,0]]
+motor = Motor(forward=4, backward=14)
 
 def idVerification(read):
     led.off()
@@ -21,6 +22,9 @@ def idVerification(read):
     if mesaggeConfirmation:
         print("Acceso Permitido")
         led.color = Color('green')
+        motor.forward()
+        sleep(10)
+        motor.backward()
     else:
         print("Acceso Denegado")
         led.color = Color('red')
