@@ -4,6 +4,23 @@ from colorzero import Color
 from signal import pause
 from bluedot import BlueDot
 from time import sleep
+import paho.mqtt.client as mqtt
+
+
+def connectionStatus(client, userdata, flags, rc):
+	mqttClient.subscribe("rpi/gpio")
+
+def messageDecoder(client, userdata, msg):
+	message = msg.payload.decode(encoding='UTF-8')
+	print(message)
+
+def openDoor():
+    print("Acceso Permitido")
+    led.color = Color('green')
+    motor.forward()
+    sleep(10)
+    motor.backward()
+
 
 led = RGBLED(17, 27, 22)
 validIDs =[[1, 0, 4, 8, 4, 227, 217, 5, 148, 121,0]]
@@ -13,23 +30,23 @@ def idVerification(read):
     led.off()
     mesaggeConfirmation = False
     for validID in validIDs:
-        for a,b in zip(validID,read):
+        for a,b in zip(validID, read):
             if a != b:
                 mesaggeConfirmation = False
                 break
             else:
                 mesaggeConfirmation = True
+
     if mesaggeConfirmation:
-        print("Acceso Permitido")
-        led.color = Color('green')
-        motor.forward()
-        sleep(10)
-        motor.backward()
+        for i in range(0, 30):
+            if iphone_allowed:
+                openDoor()
+                sleep(1)
     else:
         print("Acceso Denegado")
         led.color = Color('red')
-    sleep(2)
-    led.off()
+        sleep(2)
+        led.off()
 
 def removeID(read):
     led.off()
@@ -79,10 +96,8 @@ def modeSelection(pos):
     sleep(0.5)
 
 nfc = PN532()
-
 # setup the device
 nfc.setup(enable_logging=False)
-
 bd = BlueDot()
 bd.when_pressed = modeSelection
 

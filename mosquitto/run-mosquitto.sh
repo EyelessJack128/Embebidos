@@ -1,0 +1,1 @@
+snap run mosquitto -c mosquitto.conf -v
