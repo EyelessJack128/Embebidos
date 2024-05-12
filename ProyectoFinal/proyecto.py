@@ -1,54 +1,75 @@
 from gpiozero import RGBLED, Motor
 from pn532_repo.pn532.api import PN532
 from colorzero import Color
-from signal import pause
-from bluedot import BlueDot
 from time import sleep
+from enum import Enum
 import paho.mqtt.client as mqtt
+import json
 
+class MessageType(Enum):
+    #envíos
+    VERIFIEDFID = "verifiedFID"
+    DENIEDFID = "deniedFID"
+    ADD = "add"
+    REMOVE = "remove"
+    ##respuestas
+    UNLOKED = "unloked"
+    REMOVED = "removed"
+    ADDED = "added"
+    DENIED_ACCESS = "access_denied"
+
+#{
+#    type: "verifiedFID"
+#}
 
 def connectionStatus(client, userdata, flags, rc):
-	mqttClient.subscribe("rpi/gpio")
+    mqttClient.subscribe("rpi/gpio")
 
 def messageDecoder(client, userdata, msg):
-	message = msg.payload.decode(encoding='UTF-8')
-	print(message)
+    message = msg.payload.decode(encoding='UTF-8')
+    message_data = json.loads(message)
+    modeSelection(message_data)
 
 def openDoor():
     print("Acceso Permitido")
     led.color = Color('green')
     motor.forward()
-    sleep(10)
+    sleep(3)
+    motor.stop()
+    sleep(3)
     motor.backward()
-
+    sleep(3)
 
 led = RGBLED(17, 27, 22)
 validIDs =[[1, 0, 4, 8, 4, 227, 217, 5, 148, 121,0]]
 motor = Motor(forward=4, backward=14)
 
-def idVerification(read):
+def idVerification():
+    led.color = Color('blue')
+    read = nfc.read()
     led.off()
     mesaggeConfirmation = False
     for validID in validIDs:
-        for a,b in zip(validID, read):
-            if a != b:
-                mesaggeConfirmation = False
-                break
-            else:
-                mesaggeConfirmation = True
+        if validID == read:
+            mesaggeConfirmation = True
+            break
+        else:
+            mesaggeConfirmation = False
 
     if mesaggeConfirmation:
-        for i in range(0, 30):
-            if iphone_allowed:
-                openDoor()
-                sleep(1)
+        openDoor()
     else:
-        print("Acceso Denegado")
-        led.color = Color('red')
-        sleep(2)
-        led.off()
+        verification_failed()
 
-def removeID(read):
+def verification_failed():
+    print("Acceso denegado")
+    led.color = Color('red')
+    sleep(2)
+    led.off()
+
+def removeID():
+    led.color = Color('red')
+    read = nfc.read()
     led.off()
     if read in validIDs:
         validIDs.remove(read)
@@ -64,7 +85,9 @@ def removeID(read):
         led.off()
     sleep(0.5)
 
-def addID(read):
+def addID():
+    led.color = Color('yellow')
+    read = nfc.read()
     led.off()
     if read in validIDs:
         print("Key is already stored")
@@ -79,26 +102,29 @@ def addID(read):
         led.off()
     sleep(0.5)
 
-
-def modeSelection(pos):
-    if pos.top:
-        led.color = Color('yellow')
-        read = nfc.read()
-        addID(read)
-    elif pos.left:
-        led.color = Color('red')
-        read = nfc.read()
-        removeID(read)
-    elif pos.right:
-        led.color = Color('blue')
-        read = nfc.read()
-        idVerification(read)
-    sleep(0.5)
-
+def modeSelection(message_data: dict):
+    message_type = message_data["type"]
+    if message_type == MessageType.ADD.value:
+        addID()
+    elif message_type == MessageType.REMOVE.value:
+        removeID()
+    elif message_type == MessageType.VERIFIEDFID.value:
+        
+        idVerification()
+    elif message_type == MessageType.DENIEDFID.value:
+        verification_failed()
+    else:
+        print("Mensaje no reconocido")
+    
 nfc = PN532()
 # setup the device
 nfc.setup(enable_logging=False)
-bd = BlueDot()
-bd.when_pressed = modeSelection
 
-pause()
+clientName = "doorController"
+serverAdress = "localhost"
+
+mqttClient = mqtt.Client(mqtt.CallbackAPIVersion.VERSION1, clientName)
+mqttClient.on_connect = connectionStatus
+mqttClient.on_message = messageDecoder
+mqttClient.connect(serverAdress)
+mqttClient.loop_forever()
