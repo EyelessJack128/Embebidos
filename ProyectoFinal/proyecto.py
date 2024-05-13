@@ -22,17 +22,35 @@ class MessageType(Enum):
 #    type: "verifiedFID"
 #}
 
-def connectionStatus(client, userdata, flags, rc):
+def publish_message(type: MessageType):
+    message = {type: ""}
+    if type == MessageType.UNLOKED:
+        message[type] = MessageType.UNLOKED.value
+    elif type == MessageType.REMOVED:
+        message[type] = MessageType.REMOVED.value
+    elif type == MessageType.ADDED:
+        message[type] = MessageType.ADDED.value
+    elif type == MessageType.DENIED_ACCESS:
+        message[type] = MessageType.DENIED_ACCESS.value
+    else:
+        message[type] = "error_message"
+    message_str = json.dumps(message)
+    result = mqttClient.publish("rpi/gpio", message_str)
+    
+
+
+def connection_status(client, userdata, flags, rc):
     mqttClient.subscribe("rpi/gpio")
 
-def messageDecoder(client, userdata, msg):
+def message_decoder(client, userdata, msg):
     message = msg.payload.decode(encoding='UTF-8')
     message_data = json.loads(message)
     modeSelection(message_data)
 
-def openDoor():
+def open_door():
     print("Acceso Permitido")
     led.color = Color('green')
+    publish_message(MessageType.UNLOKED)
     motor.forward()
     sleep(3)
     motor.stop()
@@ -41,40 +59,42 @@ def openDoor():
     sleep(3)
 
 led = RGBLED(17, 27, 22)
-validIDs =[[1, 0, 4, 8, 4, 227, 217, 5, 148, 121,0]]
+valid_ids =[[1, 0, 4, 8, 4, 227, 217, 5, 148, 121,0]]
 motor = Motor(forward=4, backward=14)
 
-def idVerification():
+def id_verification():
     led.color = Color('blue')
     read = nfc.read()
     led.off()
-    mesaggeConfirmation = False
-    for validID in validIDs:
-        if validID == read:
-            mesaggeConfirmation = True
+    mesagge_confirmation = False
+    for valid_id in valid_ids:
+        if valid_id == read:
+            mesagge_confirmation = True
             break
         else:
-            mesaggeConfirmation = False
+            mesagge_confirmation = False
 
-    if mesaggeConfirmation:
-        openDoor()
+    if mesagge_confirmation:
+        open_door()
     else:
         verification_failed()
 
 def verification_failed():
     print("Acceso denegado")
     led.color = Color('red')
+    publish_message(MessageType.DENIED_ACCESS)
     sleep(2)
     led.off()
 
-def removeID():
+def remove_id():
     led.color = Color('red')
     read = nfc.read()
     led.off()
-    if read in validIDs:
-        validIDs.remove(read)
+    if read in valid_ids:
+        valid_ids.remove(read)
         print("Key removed")
         led.color = Color('green')
+        publish_message(MessageType.REMOVED)
         sleep(0.5)
         led.off()
     else:
@@ -89,15 +109,16 @@ def addID():
     led.color = Color('yellow')
     read = nfc.read()
     led.off()
-    if read in validIDs:
+    if read in valid_ids:
         print("Key is already stored")
         led.color = Color('red')
         sleep(0.5)
         led.off()
     else:
-        validIDs.append(read)
+        valid_ids.append(read)
         print("New key is stored")
         led.color = Color('green')
+        publish_message(MessageType.ADDED)
         sleep(0.5)
         led.off()
     sleep(0.5)
@@ -107,10 +128,9 @@ def modeSelection(message_data: dict):
     if message_type == MessageType.ADD.value:
         addID()
     elif message_type == MessageType.REMOVE.value:
-        removeID()
+        remove_id()
     elif message_type == MessageType.VERIFIEDFID.value:
-        
-        idVerification()
+        id_verification()
     elif message_type == MessageType.DENIEDFID.value:
         verification_failed()
     else:
@@ -120,11 +140,11 @@ nfc = PN532()
 # setup the device
 nfc.setup(enable_logging=False)
 
-clientName = "doorController"
-serverAdress = "localhost"
+client_name = "doorController"
+server_address = "localhost"
 
-mqttClient = mqtt.Client(mqtt.CallbackAPIVersion.VERSION1, clientName)
-mqttClient.on_connect = connectionStatus
-mqttClient.on_message = messageDecoder
-mqttClient.connect(serverAdress)
+mqttClient = mqtt.Client(mqtt.CallbackAPIVersion.VERSION1, client_name)
+mqttClient.on_connect = connection_status
+mqttClient.on_message = message_decoder
+mqttClient.connect(server_address)
 mqttClient.loop_forever()
