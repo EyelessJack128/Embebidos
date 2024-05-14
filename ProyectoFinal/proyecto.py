@@ -57,6 +57,7 @@ def open_door():
     sleep(3)
     motor.backward()
     sleep(3)
+    motor.stop()
 
 led = RGBLED(17, 27, 22)
 valid_ids =[[1, 0, 4, 8, 4, 227, 217, 5, 148, 121,0]]
