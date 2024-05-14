@@ -23,17 +23,17 @@ class MessageType(Enum):
 #}
 
 def publish_message(type: MessageType):
-    message = {type: ""}
+    message = {"type": ""}
     if type == MessageType.UNLOKED:
-        message[type] = MessageType.UNLOKED.value
+        message["type"] = MessageType.UNLOKED.value
     elif type == MessageType.REMOVED:
-        message[type] = MessageType.REMOVED.value
+        message["type"] = MessageType.REMOVED.value
     elif type == MessageType.ADDED:
-        message[type] = MessageType.ADDED.value
+        message["type"] = MessageType.ADDED.value
     elif type == MessageType.DENIED_ACCESS:
-        message[type] = MessageType.DENIED_ACCESS.value
+        message["type"] = MessageType.DENIED_ACCESS.value
     else:
-        message[type] = "error_message"
+        message["type"] = "error_message"
     message_str = json.dumps(message)
     result = mqttClient.publish("rpi/gpio", message_str)
     
