@@ -56,6 +56,7 @@ def open_door():
     motor.backward()
     sleep(3)
     motor.stop()
+    led.off()
 
 
 
@@ -150,7 +151,6 @@ if __name__ == '__main__':
     motor = Motor(forward=4, backward=14)
     #Light leds setup
     pir = MotionSensor(23)
-    led = LED(16)
     white_leds_pins = [10, 9 , 11]
     white_leds = [LED(i) for i in white_leds_pins]
     pir.when_motion = turn_leds_on
