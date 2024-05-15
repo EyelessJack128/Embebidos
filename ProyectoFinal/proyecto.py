@@ -1,26 +1,24 @@
-from gpiozero import RGBLED, Motor
+from gpiozero import RGBLED, Motor, MotionSensor, LED
 from pn532_repo.pn532.api import PN532
 from colorzero import Color
 from time import sleep
 from enum import Enum
 import paho.mqtt.client as mqtt
 import json
+import threading
 
 class MessageType(Enum):
-    #envíos
+    #messages from iphone
     VERIFIEDFID = "verifiedFID"
     DENIEDFID = "deniedFID"
     ADD = "add"
     REMOVE = "remove"
-    ##respuestas
+    ##messages to iphone
     UNLOKED = "unloked"
     REMOVED = "removed"
     ADDED = "added"
     DENIED_ACCESS = "access_denied"
 
-#{
-#    type: "verifiedFID"
-#}
 
 def publish_message(type: MessageType):
     message = {"type": ""}
@@ -59,9 +57,7 @@ def open_door():
     sleep(3)
     motor.stop()
 
-led = RGBLED(17, 27, 22)
-valid_ids =[[1, 0, 4, 8, 4, 227, 217, 5, 148, 121,0]]
-motor = Motor(forward=4, backward=14)
+
 
 def id_verification():
     led.color = Color('blue')
@@ -136,16 +132,39 @@ def modeSelection(message_data: dict):
         verification_failed()
     else:
         print("Mensaje no reconocido")
-    
-nfc = PN532()
-# setup the device
-nfc.setup(enable_logging=False)
 
-client_name = "doorController"
-server_address = "localhost"
 
-mqttClient = mqtt.Client(mqtt.CallbackAPIVersion.VERSION1, client_name)
-mqttClient.on_connect = connection_status
-mqttClient.on_message = message_decoder
-mqttClient.connect(server_address)
-mqttClient.loop_forever()
+def turn_leds_on():
+    for led in white_leds:
+        led.on()
+    sleep(5);
+
+def turn_leds_off():
+    for led in white_leds:
+        led.off()
+
+if __name__ == '__main__':
+    #RGB led setup
+    led = RGBLED(17, 27, 22)
+    #Motor setup
+    motor = Motor(forward=4, backward=14)
+    #Light leds setup
+    pir = MotionSensor(23)
+    led = LED(16)
+    white_leds_pins = [10, 9 , 11]
+    white_leds = [LED(i) for i in white_leds_pins]
+    pir.when_motion = turn_leds_on
+    pir.when_no_motion = turn_leds_off
+
+    #nfc setup
+    nfc = PN532()
+    nfc.setup(enable_logging=False)
+    valid_ids =[[1, 0, 4, 8, 4, 227, 217, 5, 148, 121,0]]
+    #MQTT client setup
+    client_name = "doorController"
+    server_address = "localhost"
+    mqttClient = mqtt.Client(mqtt.CallbackAPIVersion.VERSION1, client_name)
+    mqttClient.on_connect = connection_status
+    mqttClient.on_message = message_decoder
+    mqttClient.connect(server_address)
+    mqttClient.loop_forever()
